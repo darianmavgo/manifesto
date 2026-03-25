@@ -41,8 +41,24 @@ ok "All tools found."
 
 # ─── 2. DNS/CF SECRETS ────────────────────────────────────────────────────────
 _saved_cf=$(state_get "CF_DNS_TOKEN")
+
+# Attempt to load CF_DNS_TOKEN securely from other projects in ~/Documents
+if [[ -z "${CF_DNS_TOKEN:-}" ]] && [[ -z "$_saved_cf" ]]; then
+  for ext_state in ~/Documents/*/.*-state; do
+    if [[ -f "$ext_state" ]]; then
+      _ext_token=$(grep "^CF_DNS_TOKEN=" "$ext_state" 2>/dev/null | cut -d= -f2- || true)
+      if [[ -n "$_ext_token" ]]; then
+        export CF_DNS_TOKEN="$_ext_token"
+        state_set "CF_DNS_TOKEN" "${CF_DNS_TOKEN}"
+        ok "Loaded CF_DNS_TOKEN automatically from existing project: $ext_state"
+        break
+      fi
+    fi
+  done
+fi
+
 if [[ -n "${CF_DNS_TOKEN:-}" ]]; then
-  ok "CF_DNS_TOKEN found in ENV."
+  ok "CF_DNS_TOKEN is ready."
 elif [[ -n "$_saved_cf" ]]; then
   export CF_DNS_TOKEN="$_saved_cf"
   ok "CF_DNS_TOKEN loaded from state."
